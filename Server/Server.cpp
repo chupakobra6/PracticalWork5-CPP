@@ -3,112 +3,82 @@
 #include <iostream> 
 #include <cstdio> 
 #include <cstring> 
-#include <winsock2.h> 
+#include <winsock2.h>
 
 #pragma comment(lib, "WS2_32.lib")
 
 using namespace std;
 
-DWORD WINAPI serverReceive(LPVOID lpParam) {
+void playGuessNumber(SOCKET client) {
+	srand((unsigned)time(NULL)); // инициализируем генератор случайных чисел
+	int secretNumber = rand() % 100 + 1; // загадываем число от 1 до 100
+	int attemptsLeft = 7; // количество попыток
+
 	char buffer[1024] = { 0 };
-	SOCKET client = (SOCKET)lpParam;
+	sprintf_s(buffer, "I'm thinking of a number between 1 and 100. You have %d attempts to guess it.\n", attemptsLeft);
+	send(client, buffer, strlen(buffer), 0);
 
-	// Загадываем число
-	srand(GetTickCount());
-	int secretNumber = rand() % 100 + 1;
-
-	// Начало игры
-	std::string startMessage = "Let's play a game! I'm thinking of a number between 1 and 100. You have 7 attempts to guess it.";
-	int result = send(client, startMessage.c_str(), startMessage.length(), 0);
-	if (result == SOCKET_ERROR) {
-		cout << "send function failed with error " << WSAGetLastError() << endl;
-		return -1;
-	}
-
-	int attempts = 0;
-	while (attempts < 7) {
-		// Получаем данные от клиента
-		result = recv(client, buffer, sizeof(buffer), 0);
-		if (result == SOCKET_ERROR) {
-			cout << "recv function failed with error " << WSAGetLastError() << endl;
-			return -1;
+	while (attemptsLeft > 0) {
+		memset(buffer, 0, sizeof(buffer));
+		if (recv(client, buffer, sizeof(buffer), 0) == SOCKET_ERROR) {
+			cout << "recv function failed with error: " << WSAGetLastError() << endl;
+			return;
 		}
 
-		// Проверяем попытку
 		int guess = atoi(buffer);
 		if (guess == secretNumber) {
-			// Отправляем сообщение о победе
-			std::string winMessage = "Congratulations, you guessed the number!";
-			result = send(client, winMessage.c_str(), winMessage.length(), 0);
-			if (result == SOCKET_ERROR) {
-				cout << "send function failed with error " << WSAGetLastError() << endl;
-				return -1;
-			}
-			// Завершаем игру
+			sprintf_s(buffer, "You guessed the number! Congratulations!\n");
+			send(client, buffer, strlen(buffer), 0);
 			break;
 		}
+		else if (guess > secretNumber) {
+			sprintf_s(buffer, "Your guess is too high. %d attempts left.\n", attemptsLeft - 1);
+			send(client, buffer, strlen(buffer), 0);
+		}
 		else {
-			// Сообщаем клиенту, было ли число больше или меньше загаданного
-			std::string message = (guess < secretNumber) ? "Your guess was too low." : "Your guess was too high.";
-			result = send(client, message.c_str(), message.length(), 0);
-			if (result == SOCKET_ERROR) {
-				cout << "send function failed with error " << WSAGetLastError() << endl;
-				return -1;
-			}
-			attempts++;
+			sprintf_s(buffer, "Your guess is too low. %d attempts left.\n", attemptsLeft - 1);
+			send(client, buffer, strlen(buffer), 0);
 		}
 
-		memset(buffer, 0, sizeof(buffer));
-	}
-
-	// Если клиент не угадал число за 7 попыток, отправляем сообщение об этом
-	if (attempts == 7) {
-		std::string loseMessage = "Sorry, you didn't guess the number within 7 attempts.";
-		result = send(client, loseMessage.c_str(), loseMessage.length(), 0);
-		if (result == SOCKET_ERROR) {
-			cout << "send function failed with error " << WSAGetLastError() << endl;
-			return -1;
+		attemptsLeft--;
+		if (attemptsLeft == 0) {
+			sprintf_s(buffer, "You didn't guess the number. The number was %d.\n", secretNumber);
+			send(client, buffer, strlen(buffer), 0);
 		}
 	}
+	sprintf_s(buffer, "Do you want to play again? (yes or no)\n");
+	send(client, buffer, strlen(buffer), 0);
 
-	// Завершение игры
-	std::string endMessage = "Thank you for playing! Enter \"yes\" to start a new game, or any other message to quit.";
-	result = send(client, endMessage.c_str(), endMessage.length(), 0);
-	if (result == SOCKET_ERROR) {
-		cout << "send function failed with error " << WSAGetLastError() << endl;
-		return -1;
+	memset(buffer, 0, sizeof(buffer));
+	if (recv(client, buffer, sizeof(buffer), 0) == SOCKET_ERROR) {
+		cout << "recv function failed with error: " << WSAGetLastError() << endl;
+		return;
 	}
 
-	return 1;
+	if (strcmp(buffer, "yes\n") == 0) {
+		playGuessNumber(client);
+	}
+	else {
+		sprintf_s(buffer, "Thank you for playing!\n");
+		send(client, buffer, strlen(buffer), 0);
+	}
 }
 
-DWORD WINAPI serverSend(LPVOID lpParam) {
+DWORD WINAPI serverReceive(LPVOID lpParam) {
 	char buffer[1024] = { 0 };
 	SOCKET client = *(SOCKET*)lpParam;
-
 	while (true) {
-		// Получаем ответ от клиента
 		if (recv(client, buffer, sizeof(buffer), 0) == SOCKET_ERROR) {
-			cout << "recv function failed with error " << WSAGetLastError() << endl;
+			cout << "recv function failed with error: " << WSAGetLastError() << endl;
 			return -1;
 		}
-
-		// Если клиент хочет начать новую игру, отправляем сообщение об этом на сервер
-		std::string response = buffer;
-		if (response == "yes\n") {
-			std::string startMessage = "Starting a new game...";
-			send(client, startMessage.c_str(), startMessage.length(), 0);
-		}
-		else {
-			// Закрываем соединение с клиентом
-			std::string quitMessage = "Thank you for playing!";
-			send(client, quitMessage.c_str(), quitMessage.length(), 0);
+		if (strcmp(buffer, "exit\n") == 0) {
+			cout << "Client Disconnected." << endl;
 			break;
 		}
-
+		playGuessNumber(client);
 		memset(buffer, 0, sizeof(buffer));
 	}
-
 	return 1;
 }
 
@@ -117,6 +87,7 @@ int main() {
 	SOCKET server, client;
 	SOCKADDR_IN serverAddr, clientAddr;
 	WSAStartup(MAKEWORD(2, 0), &WSAData);
+
 	server = socket(AF_INET, SOCK_STREAM, 0);
 	if (server == INVALID_SOCKET) {
 		cout << "Socket creation failed with error:" << WSAGetLastError() << endl;
@@ -146,13 +117,8 @@ int main() {
 		if (t1 == NULL) {
 			cout << "Thread Creation Error: " << WSAGetLastError() << endl;
 		}
-		HANDLE t2 = CreateThread(NULL, 0, serverSend, &client, 0, &tid);
-		if (t2 == NULL) {
-			cout << "Thread Creation Error: " << WSAGetLastError() << endl;
-		}
 
 		WaitForSingleObject(t1, INFINITE);
-		WaitForSingleObject(t2, INFINITE);
 
 		closesocket(client);
 		if (closesocket(server) == SOCKET_ERROR) {
