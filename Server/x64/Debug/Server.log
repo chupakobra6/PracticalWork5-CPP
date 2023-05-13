@@ -1,0 +1,10 @@
+﻿  Server.cpp
+C:\C++\PracticalWork5\Server\Server.cpp(22,74): warning C4267: аргумент: преобразование из "size_t" в "int"; возможна потеря данных
+C:\C++\PracticalWork5\Server\Server.cpp(42,68): warning C4267: аргумент: преобразование из "size_t" в "int"; возможна потеря данных
+C:\C++\PracticalWork5\Server\Server.cpp(53,62): warning C4267: аргумент: преобразование из "size_t" в "int"; возможна потеря данных
+C:\C++\PracticalWork5\Server\Server.cpp(67,69): warning C4267: аргумент: преобразование из "size_t" в "int"; возможна потеря данных
+C:\C++\PracticalWork5\Server\Server.cpp(76,66): warning C4267: аргумент: преобразование из "size_t" в "int"; возможна потеря данных
+C:\C++\PracticalWork5\Server\Server.cpp(100,63): warning C4267: аргумент: преобразование из "size_t" в "int"; возможна потеря данных
+C:\C++\PracticalWork5\Server\Server.cpp(105,61): warning C4267: аргумент: преобразование из "size_t" в "int"; возможна потеря данных
+C:\C++\PracticalWork5\Server\Server.cpp(139,7): warning C4101: buffer: неиспользованная локальная переменная
+  Server.vcxproj -> C:\C++\PracticalWork5\x64\Debug\Server.exe
